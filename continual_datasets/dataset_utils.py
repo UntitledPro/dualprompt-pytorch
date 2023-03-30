@@ -138,7 +138,8 @@ def list_files(root, suffix, prefix=False):
     root = os.path.expanduser(root)
     files = list(
         filter(
-            lambda p: os.path.isfile(os.path.join(root, p)) and p.endswith(suffix),
+            lambda p: os.path.isfile(os.path.join(
+                root, p)) and p.endswith(suffix),
             os.listdir(root)
         )
     )
@@ -230,7 +231,8 @@ def extract_archive(from_path, to_path=None, remove_finished=False):
         with tarfile.open(from_path, 'r:gz') as tar:
             tar.extractall(path=to_path)
     elif _is_gzip(from_path):
-        to_path = os.path.join(to_path, os.path.splitext(os.path.basename(from_path))[0])
+        to_path = os.path.join(to_path, os.path.splitext(
+            os.path.basename(from_path))[0])
         with open(to_path, "wb") as out_f, gzip.GzipFile(from_path) as zip_f:
             out_f.write(zip_f.read())
     elif _is_zip(from_path):
@@ -338,14 +340,14 @@ def read_sn3_pascalvincent_tensor(path, strict=True):
 def read_label_file(path):
     with open(path, 'rb') as f:
         x = read_sn3_pascalvincent_tensor(f, strict=False)
-    assert(x.dtype == torch.uint8)
-    assert(x.ndimension() == 1)
+    assert (x.dtype == torch.uint8)
+    assert (x.ndimension() == 1)
     return x.long()
 
 
 def read_image_file(path):
     with open(path, 'rb') as f:
         x = read_sn3_pascalvincent_tensor(f, strict=False)
-    assert(x.dtype == torch.uint8)
-    assert(x.ndimension() == 3)
+    assert (x.dtype == torch.uint8)
+    assert (x.ndimension() == 3)
     return x

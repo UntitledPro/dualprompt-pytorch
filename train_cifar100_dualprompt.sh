@@ -11,13 +11,11 @@
 #SBATCH -o %N_%x_%j.out
 #SBTACH -e %N_%x_%j.err
 
-source /data/jaeho/init.sh
-conda activate torch38gpu
 python -m torch.distributed.launch \
-        --nproc_per_node=1 \
+        --nproc_per_node=4 \
         --use_env main.py \
         cifar100_dualprompt \
         --model vit_base_patch16_224 \
         --batch-size 24 \
-        --data-path /local_datasets/ \
-        --output_dir ./output 
+        --data-path ~/workspace/datasets/ \
+        --output_dir ./output

@@ -28,10 +28,12 @@ from PIL import Image
 
 from .dataset_utils import read_image_file, read_label_file
 
-class MNIST_RGB(datasets.MNIST):
+
+class MNISTRGB(datasets.MNIST):
 
     def __init__(self, root, train=True, transform=None, target_transform=None, download=False):
-        super(MNIST_RGB, self).__init__(root, transform=transform, target_transform=target_transform, download=download)
+        super(MNISTRGB, self).__init__(root, transform=transform,
+                                       target_transform=target_transform, download=download)
         self.train = train  # training set or test set
 
         if self._check_legacy_exist():
@@ -42,7 +44,8 @@ class MNIST_RGB(datasets.MNIST):
             self.download()
 
         if not self._check_exists():
-            raise RuntimeError("Dataset not found. You can use download=True to download it")
+            raise RuntimeError(
+                "Dataset not found. You can use download=True to download it")
 
         self.data, self.targets = self._load_data()
 
@@ -84,7 +87,7 @@ class MNIST_RGB(datasets.MNIST):
         # to return a PIL Image
         try:
             img = Image.fromarray(img.numpy(), mode='L').convert('RGB')
-        except:
+        except Exception:
             pass
 
         if self.transform is not None:
@@ -95,7 +98,8 @@ class MNIST_RGB(datasets.MNIST):
 
         return img, target
 
-class FashionMNIST(MNIST_RGB):
+
+class FashionMNIST(MNISTRGB):
     """`Fashion-MNIST <https://github.com/zalandoresearch/fashion-mnist>`_ Dataset.
 
     Args:
@@ -120,13 +124,15 @@ class FashionMNIST(MNIST_RGB):
         ("t10k-images-idx3-ubyte.gz", "bef4ecab320f06d8554ea6380940ec79"),
         ("t10k-labels-idx1-ubyte.gz", "bb300cfdad3c16e7a12a480ee83cd310"),
     ]
-    classes = ["T-shirt/top", "Trouser", "Pullover", "Dress", "Coat", "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot"]
+    classes = ["T-shirt/top", "Trouser", "Pullover", "Dress",
+               "Coat", "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot"]
 
-class NotMNIST(MNIST_RGB):
+
+class NotMNIST(MNISTRGB):
     def __init__(self, root, train=True, transform=None, target_transform=None, download=False):
         self.root = os.path.expanduser(root)
         self.transform = transform
-        self.target_transform=target_transform
+        self.target_transform = target_transform
         self.train = train
 
         self.url = 'https://github.com/facebookresearch/Adversarial-Continual-Learning/raw/main/data/notMNIST.zip'
@@ -135,9 +141,10 @@ class NotMNIST(MNIST_RGB):
         fpath = os.path.join(root, self.filename)
         if not os.path.isfile(fpath):
             if not download:
-               raise RuntimeError('Dataset not found. You can use download=True to download it')
+                raise RuntimeError(
+                    'Dataset not found. You can use download=True to download it')
             else:
-                print('Downloading from '+self.url)
+                print('Downloading from ' + self.url)
                 download_url(self.url, root, filename=self.filename)
 
         import zipfile
@@ -151,7 +158,6 @@ class NotMNIST(MNIST_RGB):
         else:
             fpath = os.path.join(root, 'notMNIST', 'Test')
 
-
         X, Y = [], []
         folders = os.listdir(fpath)
 
@@ -161,8 +167,9 @@ class NotMNIST(MNIST_RGB):
                 try:
                     img_path = os.path.join(folder_path, ims)
                     X.append(np.array(Image.open(img_path).convert('RGB')))
-                    Y.append(ord(folder) - 65)  # Folders are A-J so labels will be 0-9
-                except:
+                    # Folders are A-J so labels will be 0-9
+                    Y.append(ord(folder) - 65)
+                except Exception:
                     print("File {}/{} is broken".format(folder, ims))
         self.data = np.array(X)
         self.targets = Y
@@ -181,7 +188,7 @@ class NotMNIST(MNIST_RGB):
         # to return a PIL Image
         try:
             img = Image.fromarray(img)
-        except:
+        except Exception:
             pass
 
         if self.transform is not None:
@@ -192,10 +199,13 @@ class NotMNIST(MNIST_RGB):
 
         return img, target
 
+
 class SVHN(datasets.SVHN):
     def __init__(self, root, split='train', transform=None, target_transform=None, download=False):
-        super(SVHN, self).__init__(root, split=split, transform=transform, target_transform=target_transform, download=download)
-        self.split = verify_str_arg(split, "split", tuple(self.split_list.keys()))
+        super(SVHN, self).__init__(root, split=split, transform=transform,
+                                   target_transform=target_transform, download=download)
+        self.split = verify_str_arg(
+            split, "split", tuple(self.split_list.keys()))
         self.url = self.split_list[split][0]
         self.filename = self.split_list[split][1]
         self.file_md5 = self.split_list[split][2]
@@ -204,7 +214,8 @@ class SVHN(datasets.SVHN):
             self.download()
 
         if not self._check_integrity():
-            raise RuntimeError("Dataset not found or corrupted. You can use download=True to download it")
+            raise RuntimeError(
+                "Dataset not found or corrupted. You can use download=True to download it")
 
         # import here rather than at top of file because this is
         # an optional dependency for torchvision
@@ -265,9 +276,11 @@ class SVHN(datasets.SVHN):
     def extra_repr(self) -> str:
         return "Split: {split}".format(**self.__dict__)
 
+
 class Flowers102(datasets.Flowers102):
     def __init__(self, root, split='train', transform=None, target_transform=None, download=False):
-        super(Flowers102, self).__init__(root, transform=transform, target_transform=target_transform, download=download)
+        super(Flowers102, self).__init__(root, transform=transform,
+                                         target_transform=target_transform, download=download)
         self._split = verify_str_arg(split, "split", ("train", "val", "test"))
         self._base_folder = Path(self.root) / "flowers-102"
         self._images_folder = self._base_folder / "jpg"
@@ -276,23 +289,28 @@ class Flowers102(datasets.Flowers102):
             self.download()
 
         if not self._check_integrity():
-            raise RuntimeError("Dataset not found or corrupted. You can use download=True to download it")
+            raise RuntimeError(
+                "Dataset not found or corrupted. You can use download=True to download it")
 
         from scipy.io import loadmat
 
-        set_ids = loadmat(self._base_folder / self._file_dict["setid"][0], squeeze_me=True)
+        set_ids = loadmat(self._base_folder /
+                          self._file_dict["setid"][0], squeeze_me=True)
         image_ids = set_ids[self._splits_map[self._split]].tolist()
 
-        labels = loadmat(self._base_folder / self._file_dict["label"][0], squeeze_me=True)
+        labels = loadmat(self._base_folder /
+                         self._file_dict["label"][0], squeeze_me=True)
         image_id_to_label = dict(enumerate(labels["labels"].tolist(), 1))
 
         self.targets = []
         self._image_files = []
         for image_id in image_ids:
-            self.targets.append(image_id_to_label[image_id] - 1) # -1 for 0-based indexing
-            self._image_files.append(self._images_folder / f"image_{image_id:05d}.jpg")
+            # -1 for 0-based indexing
+            self.targets.append(image_id_to_label[image_id] - 1)
+            self._image_files.append(
+                self._images_folder / f"image_{image_id:05d}.jpg")
         self.classes = list(set(self.targets))
-    
+
     def __len__(self) -> int:
         return len(self._image_files)
 
@@ -331,16 +349,20 @@ class Flowers102(datasets.Flowers102):
         )
         for id in ["label", "setid"]:
             filename, md5 = self._file_dict[id]
-            download_url(self._download_url_prefix + filename, str(self._base_folder), md5=md5)
+            download_url(self._download_url_prefix + filename,
+                         str(self._base_folder), md5=md5)
+
 
 class StanfordCars(datasets.StanfordCars):
     def __init__(self, root, split='train', transform=None, target_transform=None, download=False):
         try:
             import scipy.io as sio
         except ImportError:
-            raise RuntimeError("Scipy is not found. This dataset needs to have scipy installed: pip install scipy")
+            raise RuntimeError(
+                "Scipy is not found. This dataset needs to have scipy installed: pip install scipy")
 
-        super(StanfordCars, self).__init__(root, transform=transform, target_transform=target_transform, download=download)
+        super(StanfordCars, self).__init__(root, transform=transform,
+                                           target_transform=target_transform, download=download)
 
         self._split = verify_str_arg(split, "split", ("train", "test"))
         self._base_folder = pathlib.Path(root) / "stanford_cars"
@@ -357,17 +379,20 @@ class StanfordCars(datasets.StanfordCars):
             self.download()
 
         if not self._check_exists():
-            raise RuntimeError("Dataset not found. You can use download=True to download it")
+            raise RuntimeError(
+                "Dataset not found. You can use download=True to download it")
 
         self._samples = [
             (
                 str(self._images_base_path / annotation["fname"]),
-                annotation["class"] - 1,  # Original target mapping  starts from 1, hence -1
+                # Original target mapping  starts from 1, hence -1
+                annotation["class"] - 1,
             )
             for annotation in sio.loadmat(self._annotations_mat_path, squeeze_me=True)["annotations"]
         ]
 
-        self.classes = sio.loadmat(str(devkit / "cars_meta.mat"), squeeze_me=True)["class_names"].tolist()
+        self.classes = sio.loadmat(
+            str(devkit / "cars_meta.mat"), squeeze_me=True)["class_names"].tolist()
         self.class_to_idx = {cls: i for i, cls in enumerate(self.classes)}
 
     def __len__(self) -> int:
@@ -417,11 +442,12 @@ class StanfordCars(datasets.StanfordCars):
 
         return self._annotations_mat_path.exists() and self._images_base_path.is_dir()
 
+
 class CUB200(torch.utils.data.Dataset):
-    def __init__(self, root, train=True, transform=None, target_transform=None, download=False):        
+    def __init__(self, root, train=True, transform=None, target_transform=None, download=False):
         self.root = os.path.expanduser(root)
         self.transform = transform
-        self.target_transform=target_transform
+        self.target_transform = target_transform
         self.train = train
 
         self.url = 'https://data.deepai.org/CUB200(2011).zip'
@@ -430,9 +456,10 @@ class CUB200(torch.utils.data.Dataset):
         fpath = os.path.join(root, self.filename)
         if not os.path.isfile(fpath):
             if not download:
-               raise RuntimeError('Dataset not found. You can use download=True to download it')
+                raise RuntimeError(
+                    'Dataset not found. You can use download=True to download it')
             else:
-                print('Downloading from '+self.url)
+                print('Downloading from ' + self.url)
                 download_url(self.url, root, filename=self.filename)
 
         if not os.path.exists(os.path.join(root, 'CUB_200_2011')):
@@ -447,7 +474,7 @@ class CUB200(torch.utils.data.Dataset):
             tar_ref.close()
 
             self.split()
-        
+
         if self.train:
             fpath = os.path.join(root, 'CUB_200_2011', 'train')
 
@@ -486,14 +513,15 @@ class CUB200(torch.utils.data.Dataset):
                         if not os.path.exists(test_folder + '/' + class_name):
                             os.mkdir(test_folder + '/' + class_name)
                         dst = test_folder + '/' + image_path
-                    
+
                     move(src, dst)
 
+
 class TinyImagenet(torch.utils.data.Dataset):
-    def __init__(self, root, train=True, transform=None, target_transform=None, download=False):        
+    def __init__(self, root, train=True, transform=None, target_transform=None, download=False):
         self.root = os.path.expanduser(root)
         self.transform = transform
-        self.target_transform=target_transform
+        self.target_transform = target_transform
         self.train = train
 
         self.url = 'http://cs231n.stanford.edu/tiny-imagenet-200.zip'
@@ -502,11 +530,12 @@ class TinyImagenet(torch.utils.data.Dataset):
         fpath = os.path.join(root, self.filename)
         if not os.path.isfile(fpath):
             if not download:
-               raise RuntimeError('Dataset not found. You can use download=True to download it')
+                raise RuntimeError(
+                    'Dataset not found. You can use download=True to download it')
             else:
-                print('Downloading from '+self.url)
+                print('Downloading from ' + self.url)
                 download_url(self.url, root, filename=self.filename)
-        
+
         if not os.path.exists(os.path.join(root, 'tiny-imagenet-200')):
             import zipfile
             zip_ref = zipfile.ZipFile(fpath, 'r')
@@ -520,7 +549,7 @@ class TinyImagenet(torch.utils.data.Dataset):
 
         else:
             fpath = root + 'tiny-imagenet-200/test'
-        
+
         self.data = datasets.ImageFolder(fpath, transform=transform)
 
     def split(self):
@@ -535,7 +564,7 @@ class TinyImagenet(torch.utils.data.Dataset):
             for line in f.readlines():
                 split_line = line.split('\t')
                 val_dict[split_line[0]] = split_line[1]
-                
+
         paths = glob.glob(self.root + 'tiny-imagenet-200/val/images/*')
         for path in paths:
             if '\\' in path:
@@ -545,8 +574,7 @@ class TinyImagenet(torch.utils.data.Dataset):
             if not os.path.exists(test_folder + '/' + folder):
                 os.mkdir(test_folder + '/' + folder)
                 os.mkdir(test_folder + '/' + folder + '/images')
-            
-            
+
         for path in paths:
             if '\\' in path:
                 path = path.replace('\\', '/')
@@ -555,14 +583,15 @@ class TinyImagenet(torch.utils.data.Dataset):
             src = path
             dst = test_folder + '/' + folder + '/images/' + file
             move(src, dst)
-        
+
         rmtree(self.root + 'tiny-imagenet-200/val')
 
+
 class Scene67(torch.utils.data.Dataset):
-    def __init__(self, root, train=True, transform=None, target_transform=None, download=False):        
+    def __init__(self, root, train=True, transform=None, target_transform=None, download=False):
         self.root = os.path.expanduser(root)
         self.transform = transform
-        self.target_transform=target_transform
+        self.target_transform = target_transform
         self.train = train
 
         image_url = 'http://groups.csail.mit.edu/vision/LabelMe/NewImages/indoorCVPR_09.tar'
@@ -578,7 +607,8 @@ class Scene67(torch.utils.data.Dataset):
             fpath = os.path.join(root, fname)
             if not os.path.isfile(fpath):
                 if not download:
-                    raise RuntimeError('Dataset not found. You can use download=True to download it')
+                    raise RuntimeError(
+                        'Dataset not found. You can use download=True to download it')
                 else:
                     print('Downloading from ' + url)
                     download_url(url, root, filename=fname)
@@ -602,7 +632,7 @@ class Scene67(torch.utils.data.Dataset):
             os.mkdir(os.path.join(self.root, 'Scene67', 'train'))
         if not os.path.exists(os.path.join(self.root, 'Scene67', 'test')):
             os.mkdir(os.path.join(self.root, 'Scene67', 'test'))
-        
+
         train_annos_file = os.path.join(self.root, self.train_annos_fname)
         test_annos_file = os.path.join(self.root, self.test_annos_fname)
 
@@ -612,23 +642,26 @@ class Scene67(torch.utils.data.Dataset):
                 src = self.root + 'Scene67/' + 'Images/' + line
                 dst = self.root + 'Scene67/' + 'train/' + line
                 if not os.path.exists(os.path.join(self.root, 'Scene67', 'train', line.split('/')[0])):
-                   os.mkdir(os.path.join(self.root, 'Scene67', 'train', line.split('/')[0]))
+                    os.mkdir(os.path.join(self.root, 'Scene67',
+                             'train', line.split('/')[0]))
                 move(src, dst)
-        
+
         with open(test_annos_file, 'r') as f:
             for line in f.readlines():
                 line = line.replace('\n', '')
                 src = self.root + 'Scene67/' + 'Images/' + line
                 dst = self.root + 'Scene67/' + 'test/' + line
                 if not os.path.exists(os.path.join(self.root, 'Scene67', 'test', line.split('/')[0])):
-                   os.mkdir(os.path.join(self.root, 'Scene67', 'test', line.split('/')[0]))
+                    os.mkdir(os.path.join(self.root, 'Scene67',
+                             'test', line.split('/')[0]))
                 move(src, dst)
 
-class Imagenet_R(torch.utils.data.Dataset):
-    def __init__(self, root, train=True, transform=None, target_transform=None, download=False):        
+
+class ImagenetR(torch.utils.data.Dataset):
+    def __init__(self, root, train=True, transform=None, target_transform=None, download=False):
         self.root = os.path.expanduser(root)
         self.transform = transform
-        self.target_transform=target_transform
+        self.target_transform = target_transform
         self.train = train
 
         self.url = 'https://people.eecs.berkeley.edu/~hendrycks/imagenet-r.tar'
@@ -637,9 +670,10 @@ class Imagenet_R(torch.utils.data.Dataset):
         self.fpath = os.path.join(root, 'imagenet-r')
         if not os.path.isfile(self.fpath):
             if not download:
-               raise RuntimeError('Dataset not found. You can use download=True to download it')
+                raise RuntimeError(
+                    'Dataset not found. You can use download=True to download it')
             else:
-                print('Downloading from '+self.url)
+                print('Downloading from ' + self.url)
                 download_url(self.url, root, filename=self.filename)
 
         if not os.path.exists(os.path.join(root, 'imagenet-r')):
@@ -647,21 +681,23 @@ class Imagenet_R(torch.utils.data.Dataset):
             tar_ref = tarfile.open(os.path.join(root, self.filename), 'r')
             tar_ref.extractall(root)
             tar_ref.close()
-        
+
         if not os.path.exists(self.fpath + '/train') and not os.path.exists(self.fpath + '/test'):
-            self.dataset = datasets.ImageFolder(self.fpath, transform=transform)
-            
+            self.dataset = datasets.ImageFolder(
+                self.fpath, transform=transform)
+
             train_size = int(0.8 * len(self.dataset))
             val_size = len(self.dataset) - train_size
-            
-            train, val = torch.utils.data.random_split(self.dataset, [train_size, val_size])
+
+            train, val = torch.utils.data.random_split(
+                self.dataset, [train_size, val_size])
             train_idx, val_idx = train.indices, val.indices
-    
+
             self.train_file_list = [self.dataset.imgs[i][0] for i in train_idx]
             self.test_file_list = [self.dataset.imgs[i][0] for i in val_idx]
 
             self.split()
-        
+
         if self.train:
             fpath = self.fpath + '/train'
 
@@ -686,7 +722,7 @@ class Imagenet_R(torch.utils.data.Dataset):
                 os.mkdir(os.path.join(os.path.join(train_folder, c)))
             if not os.path.exists(os.path.join(test_folder, c)):
                 os.mkdir(os.path.join(os.path.join(test_folder, c)))
-        
+
         for path in self.train_file_list:
             if '\\' in path:
                 path = path.replace('\\', '/')
@@ -700,7 +736,7 @@ class Imagenet_R(torch.utils.data.Dataset):
             src = path
             dst = os.path.join(test_folder, '/'.join(path.split('/')[-2:]))
             move(src, dst)
-        
+
         for c in self.dataset.classes:
             path = os.path.join(self.fpath, c)
             rmtree(path)

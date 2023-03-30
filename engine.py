@@ -26,10 +26,16 @@ from timm.optim import create_optimizer
 
 import utils
 
-def train_one_epoch(model: torch.nn.Module, original_model: torch.nn.Module, 
-                    criterion, data_loader: Iterable, optimizer: torch.optim.Optimizer,
-                    device: torch.device, epoch: int, max_norm: float = 0,
-                    set_training_mode=True, task_id=-1, class_mask=None, args = None,):
+
+def train_one_epoch(model: torch.nn.Module,
+                    original_model: torch.nn.Module,
+                    criterion: torch.nn.Module,
+                    data_loader: Iterable,
+                    optimizer: torch.optim.Optimizer,
+                    device: torch.device,
+                    epoch: int,
+                    max_norm: float = 0,
+                    set_training_mode=True, task_id=-1, class_mask=None, args=None,):
 
     model.train(set_training_mode)
     original_model.eval()
@@ -38,10 +44,12 @@ def train_one_epoch(model: torch.nn.Module, original_model: torch.nn.Module,
         data_loader.sampler.set_epoch(epoch)
 
     metric_logger = utils.MetricLogger(delimiter="  ")
-    metric_logger.add_meter('Lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    metric_logger.add_meter('Loss', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
+    metric_logger.add_meter('Lr', utils.SmoothedValue(
+        window_size=1, fmt='{value:.6f}'))
+    metric_logger.add_meter('Loss', utils.SmoothedValue(
+        window_size=1, fmt='{value:.4f}'))
     header = f'Train: Epoch[{epoch+1:{int(math.log10(args.epochs))+1}}/{args.epochs}]'
-    
+
     for input, target in metric_logger.log_every(data_loader, args.print_freq, header):
         input = input.to(device, non_blocking=True)
         target = target.to(device, non_blocking=True)
@@ -52,8 +60,9 @@ def train_one_epoch(model: torch.nn.Module, original_model: torch.nn.Module,
                 cls_features = output['pre_logits']
             else:
                 cls_features = None
-        
-        output = model(input, task_id=task_id, cls_features=cls_features, train=set_training_mode)
+
+        output = model(input, task_id=task_id,
+                       cls_features=cls_features, train=set_training_mode)
         logits = output['logits']
 
         # here is the trick to mask out classes of non-current tasks
@@ -61,9 +70,10 @@ def train_one_epoch(model: torch.nn.Module, original_model: torch.nn.Module,
             mask = class_mask[task_id]
             not_mask = np.setdiff1d(np.arange(args.nb_classes), mask)
             not_mask = torch.tensor(not_mask, dtype=torch.int64).to(device)
-            logits = logits.index_fill(dim=1, index=not_mask, value=float('-inf'))
+            logits = logits.index_fill(
+                dim=1, index=not_mask, value=float('-inf'))
 
-        loss = criterion(logits, target) # base criterion (CrossEntropyLoss)
+        loss = criterion(logits, target)  # base criterion (CrossEntropyLoss)
         if args.pull_constraint and 'reduce_sim' in output:
             loss = loss - args.pull_constraint_coeff * output['reduce_sim']
 
@@ -74,7 +84,7 @@ def train_one_epoch(model: torch.nn.Module, original_model: torch.nn.Module,
             sys.exit(1)
 
         optimizer.zero_grad()
-        loss.backward() 
+        loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
         optimizer.step()
 
@@ -83,7 +93,7 @@ def train_one_epoch(model: torch.nn.Module, original_model: torch.nn.Module,
         metric_logger.update(Lr=optimizer.param_groups[0]["lr"])
         metric_logger.meters['Acc@1'].update(acc1.item(), n=input.shape[0])
         metric_logger.meters['Acc@5'].update(acc5.item(), n=input.shape[0])
-        
+
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
@@ -91,8 +101,8 @@ def train_one_epoch(model: torch.nn.Module, original_model: torch.nn.Module,
 
 
 @torch.no_grad()
-def evaluate(model: torch.nn.Module, original_model: torch.nn.Module, data_loader, 
-            device, task_id=-1, class_mask=None, args=None,):
+def evaluate(model: torch.nn.Module, original_model: torch.nn.Module, data_loader,
+             device, task_id=-1, class_mask=None, args=None,):
     criterion = torch.nn.CrossEntropyLoss()
 
     metric_logger = utils.MetricLogger(delimiter="  ")
@@ -114,15 +124,16 @@ def evaluate(model: torch.nn.Module, original_model: torch.nn.Module, data_loade
                 cls_features = output['pre_logits']
             else:
                 cls_features = None
-            
+
             output = model(input, task_id=task_id, cls_features=cls_features)
             logits = output['logits']
 
             if args.task_inc and class_mask is not None:
-                #adding mask to output logits
+                # adding mask to output logits
                 mask = class_mask[task_id]
                 mask = torch.tensor(mask, dtype=torch.int64).to(device)
-                logits_mask = torch.ones_like(logits, device=device) * float('-inf')
+                logits_mask = torch.ones_like(
+                    logits, device=device) * float('-inf')
                 logits_mask = logits_mask.index_fill(1, mask, 0.0)
                 logits = logits + logits_mask
 
@@ -143,40 +154,43 @@ def evaluate(model: torch.nn.Module, original_model: torch.nn.Module, data_loade
 
 
 @torch.no_grad()
-def evaluate_till_now(model: torch.nn.Module, original_model: torch.nn.Module, data_loader, 
-                    device, task_id=-1, class_mask=None, acc_matrix=None, args=None,):
-    stat_matrix = np.zeros((3, args.num_tasks)) # 3 for Acc@1, Acc@5, Loss
+def evaluate_till_now(model: torch.nn.Module, original_model: torch.nn.Module, data_loader,
+                      device, task_id=-1, class_mask=None, acc_matrix=None, args=None,):
+    stat_matrix = np.zeros((3, args.num_tasks))  # 3 for Acc@1, Acc@5, Loss
 
-    for i in range(task_id+1):
-        test_stats = evaluate(model=model, original_model=original_model, data_loader=data_loader[i]['val'], 
-                            device=device, task_id=i, class_mask=class_mask, args=args)
+    for i in range(task_id + 1):
+        test_stats = evaluate(model=model, original_model=original_model, data_loader=data_loader[i]['val'],
+                              device=device, task_id=i, class_mask=class_mask, args=args)
 
         stat_matrix[0, i] = test_stats['Acc@1']
         stat_matrix[1, i] = test_stats['Acc@5']
         stat_matrix[2, i] = test_stats['Loss']
 
         acc_matrix[i, task_id] = test_stats['Acc@1']
-    
-    avg_stat = np.divide(np.sum(stat_matrix, axis=1), task_id+1)
+
+    avg_stat = np.divide(np.sum(stat_matrix, axis=1), task_id + 1)
 
     diagonal = np.diag(acc_matrix)
 
-    result_str = "[Average accuracy till task{}]\tAcc@1: {:.4f}\tAcc@5: {:.4f}\tLoss: {:.4f}".format(task_id+1, avg_stat[0], avg_stat[1], avg_stat[2])
+    result_str = "[Average accuracy till task{}]\tAcc@1: {:.4f}\tAcc@5: {:.4f}\tLoss: {:.4f}".format(
+        task_id + 1, avg_stat[0], avg_stat[1], avg_stat[2])
     if task_id > 0:
         forgetting = np.mean((np.max(acc_matrix, axis=1) -
-                            acc_matrix[:, task_id])[:task_id])
+                              acc_matrix[:, task_id])[:task_id])
         backward = np.mean((acc_matrix[:, task_id] - diagonal)[:task_id])
 
-        result_str += "\tForgetting: {:.4f}\tBackward: {:.4f}".format(forgetting, backward)
+        result_str += "\tForgetting: {:.4f}\tBackward: {:.4f}".format(
+            forgetting, backward)
     print(result_str)
 
     return test_stats
 
-def train_and_evaluate(model: torch.nn.Module, model_without_ddp: torch.nn.Module, original_model: torch.nn.Module, 
-                    criterion, data_loader: Iterable, optimizer: torch.optim.Optimizer, lr_scheduler, device: torch.device, 
-                    class_mask=None, args = None,):
 
-    # create matrix to save end-of-task accuracies 
+def train_and_evaluate(model: torch.nn.Module, model_without_ddp: torch.nn.Module, original_model: torch.nn.Module,
+                       criterion, data_loader: Iterable, optimizer: torch.optim.Optimizer, lr_scheduler, device: torch.device,
+                       class_mask=None, args=None,):
+
+    # create matrix to save end-of-task accuracies
     acc_matrix = np.zeros((args.num_tasks, args.num_tasks))
 
     for task_id in range(args.num_tasks):
@@ -192,19 +206,23 @@ def train_and_evaluate(model: torch.nn.Module, model_without_ddp: torch.nn.Modul
                 if (prev_end > args.size) or (cur_end > args.size):
                     pass
                 else:
-                    cur_idx = (slice(None), slice(None), slice(cur_start, cur_end)) if args.use_prefix_tune_for_e_prompt else (slice(None), slice(cur_start, cur_end))
-                    prev_idx = (slice(None), slice(None), slice(prev_start, prev_end)) if args.use_prefix_tune_for_e_prompt else (slice(None), slice(prev_start, prev_end))
+                    cur_idx = (slice(None), slice(None), slice(cur_start, cur_end)) if args.use_prefix_tune_for_e_prompt else (
+                        slice(None), slice(cur_start, cur_end))
+                    prev_idx = (slice(None), slice(None), slice(prev_start, prev_end)) if args.use_prefix_tune_for_e_prompt else (
+                        slice(None), slice(prev_start, prev_end))
 
                     with torch.no_grad():
                         if args.distributed:
                             model.module.e_prompt.prompt.grad.zero_()
                             model.module.e_prompt.prompt[cur_idx] = model.module.e_prompt.prompt[prev_idx]
-                            optimizer.param_groups[0]['params'] = model.module.parameters()
+                            optimizer.param_groups[0]['params'] = model.module.parameters(
+                            )
                         else:
                             model.e_prompt.prompt.grad.zero_()
                             model.e_prompt.prompt[cur_idx] = model.e_prompt.prompt[prev_idx]
-                            optimizer.param_groups[0]['params'] = model.parameters()
-                    
+                            optimizer.param_groups[0]['params'] = model.parameters(
+                            )
+
         # Transfer previous learned prompt param keys to the new prompt
         if args.prompt_pool and args.shared_prompt_key:
             if task_id > 0:
@@ -218,45 +236,49 @@ def train_and_evaluate(model: torch.nn.Module, model_without_ddp: torch.nn.Modul
                     if args.distributed:
                         model.module.e_prompt.prompt_key.grad.zero_()
                         model.module.e_prompt.prompt_key[cur_idx] = model.module.e_prompt.prompt_key[prev_idx]
-                        optimizer.param_groups[0]['params'] = model.module.parameters()
+                        optimizer.param_groups[0]['params'] = model.module.parameters(
+                        )
                     else:
                         model.e_prompt.prompt_key.grad.zero_()
                         model.e_prompt.prompt_key[cur_idx] = model.e_prompt.prompt_key[prev_idx]
-                        optimizer.param_groups[0]['params'] = model.parameters()
-     
+                        optimizer.param_groups[0]['params'] = model.parameters(
+                        )
+
         # Create new optimizer for each task to clear optimizer status
         if task_id > 0 and args.reinit_optimizer:
             optimizer = create_optimizer(args, model)
-        
-        for epoch in range(args.epochs):            
-            train_stats = train_one_epoch(model=model, original_model=original_model, criterion=criterion, 
-                                        data_loader=data_loader[task_id]['train'], optimizer=optimizer, 
-                                        device=device, epoch=epoch, max_norm=args.clip_grad, 
-                                        set_training_mode=True, task_id=task_id, class_mask=class_mask, args=args,)
-            
+
+        for epoch in range(args.epochs):
+            train_stats = train_one_epoch(model=model, original_model=original_model, criterion=criterion,
+                                          data_loader=data_loader[task_id]['train'], optimizer=optimizer,
+                                          device=device, epoch=epoch, max_norm=args.clip_grad,
+                                          set_training_mode=True, task_id=task_id, class_mask=class_mask, args=args,)
+
             if lr_scheduler:
                 lr_scheduler.step(epoch)
 
-        test_stats = evaluate_till_now(model=model, original_model=original_model, data_loader=data_loader, device=device, 
-                                    task_id=task_id, class_mask=class_mask, acc_matrix=acc_matrix, args=args)
+        test_stats = evaluate_till_now(model=model, original_model=original_model, data_loader=data_loader, device=device,
+                                       task_id=task_id, class_mask=class_mask, acc_matrix=acc_matrix, args=args)
         if args.output_dir and utils.is_main_process():
-            Path(os.path.join(args.output_dir, 'checkpoint')).mkdir(parents=True, exist_ok=True)
-            
-            checkpoint_path = os.path.join(args.output_dir, 'checkpoint/task{}_checkpoint.pth'.format(task_id+1))
+            Path(os.path.join(args.output_dir, 'checkpoint')).mkdir(
+                parents=True, exist_ok=True)
+
+            checkpoint_path = os.path.join(
+                args.output_dir, 'checkpoint/task{}_checkpoint.pth'.format(task_id + 1))
             state_dict = {
-                    'model': model_without_ddp.state_dict(),
-                    'optimizer': optimizer.state_dict(),
-                    'epoch': epoch,
-                    'args': args,
-                }
+                'model': model_without_ddp.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'epoch': epoch,
+                'args': args,
+            }
             if args.sched is not None and args.sched != 'constant':
                 state_dict['lr_scheduler'] = lr_scheduler.state_dict()
-            
+
             utils.save_on_master(state_dict, checkpoint_path)
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-            **{f'test_{k}': v for k, v in test_stats.items()},
-            'epoch': epoch,}
+                     **{f'test_{k}': v for k, v in test_stats.items()},
+                     'epoch': epoch, }
 
         if args.output_dir and utils.is_main_process():
             with open(os.path.join(args.output_dir, '{}_stats.txt'.format(datetime.datetime.now().strftime('log_%Y_%m_%d_%H_%M'))), 'a') as f:
